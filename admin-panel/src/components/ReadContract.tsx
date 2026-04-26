@@ -21,8 +21,11 @@ import {
   parseFunctionParams,
 } from "@/lib/contracts";
 
+import { type NetworkConfig } from "@/lib/networks";
+
 interface ReadContractProps {
   walletConnected: boolean;
+  selectedNetwork: NetworkConfig;
 }
 
 interface FunctionResult {
@@ -55,7 +58,7 @@ const QUICK_READS = [
   },
 ];
 
-export default function ReadContract({ walletConnected }: ReadContractProps) {
+export default function ReadContract({ walletConnected, selectedNetwork }: ReadContractProps) {
   const [contractAddr, setContractAddr] = useState("");
   const [selectedAbi, setSelectedAbi] = useState<string>("");
   const [expandedFns, setExpandedFns] = useState<Record<string, boolean>>({});
