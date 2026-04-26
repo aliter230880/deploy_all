@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { switchToNetwork, type NetworkConfig } from "@/lib/networks";
 import {
   ABIS,
   KNOWN_CONTRACTS,
@@ -29,7 +30,6 @@ import {
   isViewFunction,
   parseFunctionName,
   parseFunctionParams,
-  polygonscanTx,
 } from "@/lib/contracts";
 import type { TxRecord } from "@/pages/Dashboard";
 
@@ -37,9 +37,10 @@ interface WriteContractProps {
   walletConnected: boolean;
   onAddTx: (tx: TxRecord) => void;
   onUpdateTx: (id: string, status: TxRecord["status"]) => void;
+  selectedNetwork: NetworkConfig;
 }
 
-export default function WriteContract({ walletConnected, onAddTx, onUpdateTx }: WriteContractProps) {
+export default function WriteContract({ walletConnected, onAddTx, onUpdateTx, selectedNetwork }: WriteContractProps) {
   const [contractAddr, setContractAddr] = useState("");
   const [selectedAbi, setSelectedAbi] = useState<string>("");
   const [expandedFns, setExpandedFns] = useState<Record<string, boolean>>({});
@@ -244,7 +245,7 @@ export default function WriteContract({ walletConnected, onAddTx, onUpdateTx }: 
                     </Button>
                     {txHash && (
                       <a
-                        href={polygonscanTx(txHash)}
+                        href={selectedNetwork.explorerTx(txHash)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 text-[10px] text-primary hover:underline"
