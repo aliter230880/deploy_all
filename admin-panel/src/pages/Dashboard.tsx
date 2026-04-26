@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import {
   Rocket, BookOpen, PenLine, Zap, Clock, LogOut,
   Wifi, WifiOff, AlertCircle, ExternalLink, ChevronDown,
-  FlaskConical, Globe,
+  FlaskConical, Globe, FileCode2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +14,7 @@ import ReadContract from "@/components/ReadContract";
 import WriteContract from "@/components/WriteContract";
 import QuickActions from "@/components/QuickActions";
 import TxHistory from "@/components/TxHistory";
+import ContractUploader from "@/components/ContractUploader";
 
 export interface TxRecord {
   id: string;
@@ -24,10 +25,11 @@ export interface TxRecord {
   status: "pending" | "confirmed" | "failed";
 }
 
-type Section = "deploy" | "read" | "write" | "quick" | "history";
+type Section = "deploy" | "read" | "write" | "quick" | "history" | "custom";
 
 const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType }[] = [
   { id: "deploy", label: "Deploy", icon: Rocket },
+  { id: "custom", label: "Upload .sol", icon: FileCode2 },
   { id: "read", label: "Read Contract", icon: BookOpen },
   { id: "write", label: "Write Contract", icon: PenLine },
   { id: "quick", label: "Quick Actions", icon: Zap },
@@ -354,6 +356,14 @@ export default function Dashboard() {
               onAddTx={addTx}
               onUpdateTx={updateTx}
               selectedNetwork={selectedNetwork}
+            />
+          )}
+          {section === "custom" && (
+            <ContractUploader
+              walletConnected={connected}
+              selectedNetwork={selectedNetwork}
+              onAddTx={addTx}
+              onUpdateTx={updateTx}
             />
           )}
           {section === "quick" && (
