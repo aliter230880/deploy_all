@@ -58,6 +58,7 @@ export const ABIS: Record<string, string[]> = {
     "function getConversation(address,address,uint256,uint256) external view returns (tuple(address sender,address recipient,string text,uint256 timestamp)[],uint256)",
   ],
   FakeToken: [
+    "constructor(string name, string symbol, uint8 decimals, uint256 initialSupply, uint256 maxSupply)",
     "function name() view returns (string)",
     "function symbol() view returns (string)",
     "function decimals() view returns (uint8)",
