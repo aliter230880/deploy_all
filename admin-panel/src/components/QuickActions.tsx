@@ -14,18 +14,19 @@ import {
   IDENTITY_CONTRACT,
   MESSAGE_CONTRACT,
   KNOWN_CONTRACTS,
-  polygonscanTx,
   getDeployedAddress,
 } from "@/lib/contracts";
+import { switchToNetwork, type NetworkConfig } from "@/lib/networks";
 import type { TxRecord } from "@/pages/Dashboard";
 
 interface QuickActionsProps {
   walletConnected: boolean;
   onAddTx: (tx: TxRecord) => void;
   onUpdateTx: (id: string, status: TxRecord["status"]) => void;
+  selectedNetwork: NetworkConfig;
 }
 
-export default function QuickActions({ walletConnected, onAddTx, onUpdateTx }: QuickActionsProps) {
+export default function QuickActions({ walletConnected, onAddTx, onUpdateTx, selectedNetwork }: QuickActionsProps) {
   const [adminKeyStatus, setAdminKeyStatus] = useState<"idle" | "signing" | "sending" | "done" | "error">("idle");
   const [adminKeyTx, setAdminKeyTx] = useState("");
 
@@ -215,7 +216,7 @@ export default function QuickActions({ walletConnected, onAddTx, onUpdateTx }: Q
               )}
             </Button>
             {adminKeyStatus === "done" && adminKeyTx && (
-              <a href={polygonscanTx(adminKeyTx)} target="_blank" rel="noopener noreferrer"
+              <a href={selectedNetwork.explorerTx(adminKeyTx)} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1 text-[10px] text-primary hover:underline" data-testid="link-admin-key-tx">
                 <CheckCircle2 className="w-3 h-3" /> Confirmed: {adminKeyTx.slice(0, 16)}...
               </a>
