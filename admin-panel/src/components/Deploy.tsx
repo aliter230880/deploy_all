@@ -206,7 +206,8 @@ export default function Deploy({ walletConnected, onAddTx, onUpdateTx, selectedN
             <div>
               <CardTitle className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
                 <Coins className="w-3.5 h-3.5 text-accent" />
-                Token Deployer
+                USDT
+                <Badge className="bg-accent/10 text-accent border-accent/30 text-[9px] uppercase">ERC-20</Badge>
                 <Badge className={`text-[9px] uppercase border ${selectedNetwork.badgeClass}`}>
                   {selectedNetwork.isTestnet ? <FlaskConical className="w-2 h-2 mr-0.5 inline" /> : <Globe className="w-2 h-2 mr-0.5 inline" />}
                   {selectedNetwork.name}
@@ -216,7 +217,7 @@ export default function Deploy({ walletConnected, onAddTx, onUpdateTx, selectedN
                 )}
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground mt-1">
-                ERC-20 с permit, blacklist, pause, mint/burn. Деплой в выбранную сеть — <span className="font-mono text-foreground">{selectedNetwork.name}</span> (chain {selectedNetwork.chainId}).
+                ERC-20 · permit · blacklist · pause · mint/burn · maxSupply — деплой на <span className="font-mono text-foreground">{selectedNetwork.name}</span> (chain {selectedNetwork.chainId}).
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -233,12 +234,38 @@ export default function Deploy({ walletConnected, onAddTx, onUpdateTx, selectedN
 
         <CardContent className="space-y-3">
           {/* Functions */}
-          <div className="flex flex-wrap gap-1">
-            {["transfer", "approve", "mint", "burn", "permit", "setBlacklist", "setPaused", "setPools", "transferOwnership", "burnFrom"].map((fn) => (
-              <span key={fn} className="text-[10px] font-mono bg-muted text-muted-foreground px-2 py-0.5 border border-border">
-                {fn}()
-              </span>
-            ))}
+          <div className="space-y-2">
+            <div>
+              <p className="text-[9px] text-primary/60 uppercase font-bold tracking-wider mb-1">// Read</p>
+              <div className="flex flex-wrap gap-1">
+                {[
+                  "name", "symbol", "decimals", "totalSupply", "maxSupply",
+                  "owner", "pools", "metaURI", "isPaused",
+                  "balanceOf", "allowance", "nonces",
+                  "isBlacklisted", "DOMAIN_SEPARATOR", "eip712Domain",
+                ].map((fn) => (
+                  <span key={fn} className="text-[10px] font-mono bg-primary/5 text-primary/70 px-2 py-0.5 border border-primary/20">
+                    {fn}()
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-[9px] text-accent/60 uppercase font-bold tracking-wider mb-1">// Write</p>
+              <div className="flex flex-wrap gap-1">
+                {[
+                  "transfer", "transferFrom", "approve",
+                  "increaseAllowance", "decreaseAllowance",
+                  "mint", "burn", "burnFrom",
+                  "setBlacklist", "setPaused", "setPools", "setMetaURI",
+                  "transferOwnership", "renounceOwnership", "permit",
+                ].map((fn) => (
+                  <span key={fn} className="text-[10px] font-mono bg-accent/5 text-accent/70 px-2 py-0.5 border border-accent/20">
+                    {fn}()
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Constructor Form */}
