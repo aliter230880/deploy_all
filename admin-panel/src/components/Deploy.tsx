@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ethers } from "ethers";
 import {
   Rocket, CheckCircle2, Loader2, AlertCircle, ExternalLink,
-  Copy, Coins, ChevronDown, ChevronUp,
+  Copy, Coins, ChevronDown, ChevronUp, FlaskConical, Globe,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,26 +11,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
-  getSigner,
-  getSignerForChain,
+  getProvider,
   CONTRACT_BYTECODES,
   FAKETOKEN_BYTECODE,
   ABIS,
-  polygonscanAddr,
-  bscscanTestnetAddr,
-  bscscanTestnetTx,
-  BSC_TESTNET_CHAIN_ID,
-  BSC_TESTNET_CHAIN_HEX,
-  BSC_TESTNET_PARAMS,
   getDeployedAddress,
   saveDeployedAddress,
 } from "@/lib/contracts";
+import { switchToNetwork, type NetworkConfig } from "@/lib/networks";
 import type { TxRecord } from "@/pages/Dashboard";
 
 interface DeployProps {
   walletConnected: boolean;
   onAddTx: (tx: TxRecord) => void;
   onUpdateTx: (id: string, status: TxRecord["status"]) => void;
+  selectedNetwork: NetworkConfig;
 }
 
 const CONTRACT_INFO: {
@@ -69,7 +64,7 @@ interface FakeTokenParams {
   maxSupply: string;
 }
 
-export default function Deploy({ walletConnected, onAddTx, onUpdateTx }: DeployProps) {
+export default function Deploy({ walletConnected, onAddTx, onUpdateTx, selectedNetwork }: DeployProps) {
   const [statuses, setStatuses] = useState<Record<string, DeployStatus>>({});
   const [deployedAddrs, setDeployedAddrs] = useState<Record<string, string>>(() => {
     const saved: Record<string, string> = {};
@@ -98,6 +93,12 @@ export default function Deploy({ walletConnected, onAddTx, onUpdateTx }: DeployP
     setTokenParams((p) => ({ ...p, [key]: value }));
   }
 
+  async function getSignerOnNetwork() {
+    await switchToNetwork(selectedNetwork);
+    const provider = await getProvider();
+    return provider.getSigner();
+  }
+
   async function handleDeploy(contractName: string) {
     if (!walletConnected) {
       toast({ title: "Wallet Required", description: "Connect MetaMask first.", variant: "destructive" });
@@ -108,7 +109,7 @@ export default function Deploy({ walletConnected, onAddTx, onUpdateTx }: DeployP
     onAddTx({ id: txId, time: new Date().toLocaleTimeString(), contract: contractName, fn: "deploy()", txHash: "", status: "pending" });
 
     try {
-      const signer = await getSigner();
+      const signer = await getSignerOnNetwork();
       const bytecode = CONTRACT_BYTECODES[contractName];
       const abi = ABIS[contractName] || [];
       const factory = new ethers.ContractFactory(abi, bytecode, signer);
@@ -158,19 +159,13 @@ export default function Deploy({ walletConnected, onAddTx, onUpdateTx }: DeployP
     onAddTx({ id: txId, time: new Date().toLocaleTimeString(), contract: "FakeToken", fn: "deploy()", txHash: "", status: "pending" });
 
     try {
-      const signer = await getSignerForChain(BSC_TESTNET_CHAIN_ID, BSC_TESTNET_CHAIN_HEX, BSC_TESTNET_PARAMS);
+      const signer = await getSignerOnNetwork();
       const abi = ABIS["FakeToken"];
       const factory = new ethers.ContractFactory(abi, FAKETOKEN_BYTECODE, signer);
 
-      toast({ title: "Deploying to BSC Testnet", description: "Confirm the transaction in MetaMask…" });
+      toast({ title: `Deploying to ${selectedNetwork.name}`, description: "Confirm the transaction in MetaMask…" });
 
-      const contract = await factory.deploy(
-        tokenParams.name,
-        tokenParams.symbol,
-        dec,
-        init,
-        max
-      );
+      const contract = await factory.deploy(tokenParams.name, tokenParams.symbol, dec, init, max);
 
       setTokenTxHash(contract.deployTransaction.hash);
       onAddTx({ id: `${txId}-hash`, time: new Date().toLocaleTimeString(), contract: "FakeToken", fn: "deploy()", txHash: contract.deployTransaction.hash, status: "pending" });
@@ -183,7 +178,7 @@ export default function Deploy({ walletConnected, onAddTx, onUpdateTx }: DeployP
       setTokenStatus("deployed");
       onUpdateTx(txId, "confirmed");
 
-      toast({ title: "FakeToken Deployed!", description: `Address: ${address}` });
+      toast({ title: "Token Deployed!", description: `${selectedNetwork.name}: ${address}` });
     } catch (e: any) {
       setTokenStatus("error");
       onUpdateTx(txId, "failed");
@@ -212,13 +207,16 @@ export default function Deploy({ walletConnected, onAddTx, onUpdateTx }: DeployP
               <CardTitle className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
                 <Coins className="w-3.5 h-3.5 text-accent" />
                 Token Deployer
-                <Badge className="bg-accent/10 text-accent border-accent/30 text-[9px] uppercase">BSC Testnet</Badge>
+                <Badge className={`text-[9px] uppercase border ${selectedNetwork.badgeClass}`}>
+                  {selectedNetwork.isTestnet ? <FlaskConical className="w-2 h-2 mr-0.5 inline" /> : <Globe className="w-2 h-2 mr-0.5 inline" />}
+                  {selectedNetwork.name}
+                </Badge>
                 {tokenAddr && (
                   <Badge className="bg-primary/10 text-primary border-primary/30 text-[9px] uppercase">Deployed</Badge>
                 )}
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground mt-1">
-                ERC-20 с permit, blacklist, pause, mint/burn. Деплой на BSC Testnet (chain 97). Параметры настраиваются ниже.
+                ERC-20 с permit, blacklist, pause, mint/burn. Деплой в выбранную сеть — <span className="font-mono text-foreground">{selectedNetwork.name}</span> (chain {selectedNetwork.chainId}).
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -322,10 +320,25 @@ export default function Deploy({ walletConnected, onAddTx, onUpdateTx }: DeployP
                 {")"}
               </div>
 
-              <div className="text-[10px] text-muted-foreground bg-yellow-500/5 border border-yellow-500/20 px-2 py-1.5">
-                ⚠ MetaMask переключится на <span className="text-yellow-400 font-mono">BSC Testnet (97)</span>. Нужен tBNB — получи на{" "}
-                <a href="https://testnet.bnbchain.org/faucet-smart" target="_blank" rel="noopener noreferrer" className="text-primary underline">faucet</a>.
-              </div>
+              {selectedNetwork.isTestnet ? (
+                <div className="text-[10px] text-muted-foreground bg-yellow-500/5 border border-yellow-500/20 px-2 py-1.5">
+                  ⚠ MetaMask переключится на <span className="text-yellow-400 font-mono">{selectedNetwork.name} ({selectedNetwork.chainId})</span>.
+                  Нужен {selectedNetwork.currency} — получи на{" "}
+                  {selectedNetwork.id === "bsc-testnet" && (
+                    <a href="https://testnet.bnbchain.org/faucet-smart" target="_blank" rel="noopener noreferrer" className="text-primary underline">BSC Faucet</a>
+                  )}
+                  {selectedNetwork.id === "polygon-amoy" && (
+                    <a href="https://faucet.polygon.technology" target="_blank" rel="noopener noreferrer" className="text-primary underline">Polygon Faucet</a>
+                  )}
+                  {selectedNetwork.id !== "bsc-testnet" && selectedNetwork.id !== "polygon-amoy" && (
+                    <span className="text-primary">{selectedNetwork.blockExplorerUrl}</span>
+                  )}
+                </div>
+              ) : (
+                <div className="text-[10px] text-red-400/90 bg-red-500/5 border border-red-500/20 px-2 py-1.5">
+                  🔴 Выбрана <span className="font-mono font-bold">{selectedNetwork.name}</span> — mainnet с реальными деньгами. Убедись что сеть правильная.
+                </div>
+              )}
             </div>
           )}
 
@@ -337,7 +350,7 @@ export default function Deploy({ walletConnected, onAddTx, onUpdateTx }: DeployP
                 <button onClick={() => copyAddress(tokenAddr)} className="text-muted-foreground hover:text-primary transition-colors" data-testid="button-copy-FakeToken">
                   <Copy className="w-3.5 h-3.5" />
                 </button>
-                <a href={bscscanTestnetAddr(tokenAddr)} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                <a href={selectedNetwork.explorerAddr(tokenAddr)} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>
@@ -347,7 +360,7 @@ export default function Deploy({ walletConnected, onAddTx, onUpdateTx }: DeployP
           {tokenTxHash && !tokenAddr && (
             <div className="bg-muted border border-border p-2 flex items-center justify-between">
               <span className="text-[10px] font-mono text-yellow-400">Tx: {tokenTxHash.slice(0, 20)}…</span>
-              <a href={bscscanTestnetTx(tokenTxHash)} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+              <a href={selectedNetwork.explorerTx(tokenTxHash)} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>
@@ -364,19 +377,19 @@ export default function Deploy({ walletConnected, onAddTx, onUpdateTx }: DeployP
             }`}
           >
             {tokenStatus === "deploying" ? (
-              <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> Deploying to BSC Testnet…</>
+              <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> Deploying → {selectedNetwork.shortName}…</>
             ) : tokenAddr ? (
-              <><Rocket className="w-3 h-3 mr-2" /> Redeploy Token</>
+              <><Rocket className="w-3 h-3 mr-2" /> Redeploy → {selectedNetwork.shortName}</>
             ) : (
-              <><Rocket className="w-3 h-3 mr-2" /> Deploy to BSC Testnet</>
+              <><Rocket className="w-3 h-3 mr-2" /> Deploy → {selectedNetwork.shortName}</>
             )}
           </Button>
         </CardContent>
       </Card>
 
-      {/* ── Other Contracts (Polygon) ──────────────────────────────────────── */}
+      {/* ── Other Contracts ────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 mt-6 mb-2">
-        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">// Polygon Mainnet Contracts</span>
+        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">// Other Contracts → {selectedNetwork.name}</span>
       </div>
 
       <div className="grid gap-4">
@@ -416,28 +429,33 @@ export default function Deploy({ walletConnected, onAddTx, onUpdateTx }: DeployP
                       <button onClick={() => copyAddress(addr || prevAddr || "")} className="text-muted-foreground hover:text-primary transition-colors" data-testid={`button-copy-${info.name}`}>
                         <Copy className="w-3.5 h-3.5" />
                       </button>
-                      <a href={polygonscanAddr(addr || prevAddr || "")} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                      <a href={selectedNetwork.explorerAddr(addr || prevAddr || "")} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                     </div>
+                  </div>
+                )}
+                {!selectedNetwork.isTestnet && (
+                  <div className="text-[10px] text-red-400/80 bg-red-500/5 border border-red-500/20 px-2 py-1">
+                    🔴 Мейннет: <span className="font-mono">{selectedNetwork.name}</span> — реальные деньги
                   </div>
                 )}
                 <Button
                   onClick={() => handleDeploy(info.name)}
                   disabled={status === "deploying" || !walletConnected}
                   data-testid={`button-deploy-${info.name}`}
-                  className={`font-bold uppercase tracking-wider text-xs h-8 ${
+                  className={`w-full font-bold uppercase tracking-wider text-xs h-8 ${
                     addr || prevAddr
                       ? "bg-secondary text-secondary-foreground hover:bg-secondary/80"
                       : "bg-primary text-primary-foreground hover:bg-primary/90 glow-primary"
                   }`}
                 >
                   {status === "deploying" ? (
-                    <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> Deploying...</>
+                    <><Loader2 className="w-3 h-3 mr-2 animate-spin" /> Deploying on {selectedNetwork.shortName}...</>
                   ) : addr || prevAddr ? (
-                    <><Rocket className="w-3 h-3 mr-2" /> Redeploy</>
+                    <><Rocket className="w-3 h-3 mr-2" /> Redeploy → {selectedNetwork.shortName}</>
                   ) : (
-                    <><Rocket className="w-3 h-3 mr-2" /> Deploy</>
+                    <><Rocket className="w-3 h-3 mr-2" /> Deploy → {selectedNetwork.shortName}</>
                   )}
                 </Button>
               </CardContent>
