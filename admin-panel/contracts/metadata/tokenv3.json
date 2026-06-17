@@ -1,0 +1,7 @@
+{
+  "name": "TokenV3",
+  "symbol": "TV3",
+  "description": "ERC-20 token with metaURI icon, permit, transferConstraints, dual pools v2+v3.",
+  "image": "https://raw.githubusercontent.com/aliter230880/deploy_all/main/admin-panel/metadata/tokenv3-icon.svg",
+  "decimals": 18
+}
